@@ -69,11 +69,12 @@ fn main() {
     chain.AddBlock(Some("Thrid Block".to_string()));
 
     for blocks in chain.blocks {
-        println!("{}", blocks.prev_hash.unwrap());
-        println!("{}", blocks.data.unwrap());
-        println!("{}", blocks.hash.unwrap());
+        println!(" Prev hash : {}", blocks.prev_hash.unwrap());
+        println!("Data : {}", blocks.data.unwrap());
+        println!("Hash : {}", blocks.hash.unwrap());
 
     }
+    
 }
 
 
