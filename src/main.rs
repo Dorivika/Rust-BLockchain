@@ -1,11 +1,23 @@
+use std::collections::HashMap;
+
+use blockchain::BlockChain;
+
 mod block;
 mod proof;
+mod blockchain;
 
-use block::BlockChain;
 
+struct CommandLine <'b> {
+    blockchain : &'b BlockChain<'b>,
+}
+
+impl <'b>CommandLine<'b> {
+    fn print_usage(&self) {}
+} 
 fn main() {
-    let mut chain = BlockChain::init_blockchain();
-    chain.AddBlock(Some("First Block".to_string()));
+     
+    let mut chain = blockchain::BlockChain::init_blockchain();
+    BlockChain::<'_>::AddBlock(Some("First Block".to_string()));
     chain.AddBlock(Some("second Block".to_string()));
     chain.AddBlock(Some("Thrid Block".to_string()));
 
