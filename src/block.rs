@@ -1,8 +1,4 @@
 use crate::proof;
-
-use std::fmt;
-use bincode::serialize;
-
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -15,7 +11,6 @@ pub struct Block {
 }
 
 pub fn Genesis() -> Block {
-    
     create_block(Some("Genesis".to_string()), Some("".to_string()))
 }
 
@@ -33,7 +28,7 @@ pub fn create_block(data: Option<String>, prev_hash: Option<String>) -> Block {
     let (nonce, hash) = pow.run();
     let nonce = Some(nonce);
     let hash = Some(hash);
-    let mut block = Block {
+    block = Block {
         hash,
         data: data_m,
         prev_hash : prev_hash_m,

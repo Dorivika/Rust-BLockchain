@@ -1,7 +1,6 @@
-use std::{env, os::windows::process};
+use std::env;
 
 use blockchain::BlockChain;
-use getopts::Options;
 
 mod block;
 mod proof;

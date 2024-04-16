@@ -4,7 +4,7 @@ const DIFFICULTY:u32 = 10;
 use crate::block::Block;
 use sha2::{Digest, Sha256};
 
-use num::{bigint::{self, BigInt}, BigUint, Num};
+use num::{bigint::BigInt, Num};
 
 pub struct Pow<'a> {
     Block: &'a Block,
@@ -22,8 +22,6 @@ pub fn new_proof<'a>(b: &'a Block) -> Pow<'a> {
 
 impl  <'a>Pow <'a> {
     pub fn run(&self) -> (i32, String) {
-        let int_hash : BigInt;
-        let hash : String;
     
         let mut nonce = 0;
     
@@ -63,7 +61,6 @@ impl  <'a>Pow <'a> {
 
 
 pub fn validate(p : &Pow) -> bool {
-    let int_hash : BigInt;
     let data = Pow::init_data(p, p.Block.nonce.unwrap());
 
     let mut hasher = Sha256::new();

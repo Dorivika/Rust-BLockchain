@@ -1,9 +1,6 @@
-use std::{collections::HashMap, fs::{File, OpenOptions}, hash::Hash, io::{Error, Read, Write}, sync::Mutex};
+use std::{collections::HashMap, fs::{File, OpenOptions}, io::{Read, Write}, sync::Mutex};
 use lazy_static::lazy_static;
 use crate::block::{self, *};
-use bincode::serialize;
-use bincode::deserialize;
-
 lazy_static! {
     pub static ref DATABASE: Mutex<HashMap<String, Vec<u8>>> = Mutex::new(load_database("db.txt").unwrap());
 }
@@ -99,8 +96,7 @@ pub fn save_database(database: &HashMap<String, Vec<u8>>, filename: &str) -> std
         },
     };
     match file.write_all(&serialized_database) {
-        Ok(file) => {
-            file;
+        Ok(_) => {
             println!("saved file successfully")
         },
         Err(e) => {
