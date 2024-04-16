@@ -36,7 +36,6 @@ impl  <'a>Pow <'a> {
     
             let hash_bigint = BigInt::from_str_radix(&hash_as_str, 16).unwrap();
     
-            // Now you can compare hash_bigint with p.Target
             if hash_bigint < self.Target {
                 return (nonce, hash_as_str);
             }
