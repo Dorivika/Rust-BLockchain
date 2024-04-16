@@ -1,11 +1,11 @@
-use std::{borrow::BorrowMut, clone, collections::HashMap, fs::File, hash::Hash, io::{Read, Write}, ops::Deref, sync::Mutex};
-use serde::Serialize;
+use std::{collections::HashMap, fs::{File, OpenOptions}, hash::Hash, io::{Error, Read, Write}, sync::Mutex};
 use lazy_static::lazy_static;
-use serde::Deserialize;
-use crate::{block::{self, *}};
+use crate::block::{self, *};
+use bincode::serialize;
+use bincode::deserialize;
 
 lazy_static! {
-    pub static ref DATABASE: Mutex<HashMap<String, Vec<u8>>> = Mutex::new(load_database("db.bin").unwrap());
+    pub static ref DATABASE: Mutex<HashMap<String, Vec<u8>>> = Mutex::new(load_database("db.txt").unwrap());
 }
 
 #[derive(Debug)]
@@ -30,15 +30,15 @@ impl <'a>BlockChain <'a>{
             let serialized_genesis = bincode::serialize(&genesis).unwrap();
             DATABASE.lock().unwrap().insert(gen_hash.clone(), serialized_genesis);
             DATABASE.lock().unwrap().insert("lh".to_string(),gen_hash.clone().into_bytes());
-            save_database(&DATABASE.lock().unwrap(), "db.bin").unwrap();
+            save_database(&DATABASE.lock().unwrap(), "db.txt").unwrap();
             BlockChain {
                 lasthash : gen_hash.clone(),
                 database : & DATABASE,
             }
             
         } else {
+            println!("Already a chain in database");
             let lasthash = String::from_utf8_lossy(&DATABASE.lock().unwrap().get("lh").unwrap()).to_string();
-            save_database(&DATABASE.lock().unwrap(), "db.bin").unwrap();
             BlockChain {
                 lasthash,
                 database: & DATABASE,
@@ -47,18 +47,20 @@ impl <'a>BlockChain <'a>{
     }
 
     pub fn add_block(&mut self, data : String) {
-        let binding = self.database.lock().unwrap();
+        let mut binding = self.database.lock().unwrap();
         let item = binding.get("lh").unwrap();
         let item = String::from_utf8_lossy(item).to_string();
 
         let new_block = create_block(Some(data), Some(item.clone()));
+        println!("BLOCK CREATED");
+        println!("{:?}", new_block);
         let serialized_newblock = bincode::serialize(&new_block).unwrap();
+        println!("Block Serialized");
+        binding.insert(new_block.hash.clone().unwrap(),serialized_newblock);
+        
+        binding.insert("lh".to_string(), new_block.hash.unwrap().into_bytes());
 
-        self.database.lock().unwrap().insert(new_block.hash.clone().unwrap(),serialized_newblock);
-
-        self.database.lock().unwrap().insert("lh".to_string(), new_block.hash.unwrap().into_bytes());
-
-        save_database(&self.database.lock().unwrap(), "db.bin").unwrap();
+        save_database(&binding, "db.txt").unwrap();
 
     }   
 
@@ -89,14 +91,24 @@ impl<'a> Iterator for BlockChainIterator<'a> {
 
 pub fn save_database(database: &HashMap<String, Vec<u8>>, filename: &str) -> std::io::Result<()> {
     let serialized_database = bincode::serialize(database).unwrap();
-    let mut file = match File::open(format!("{}",filename)) {
+    let mut file = match OpenOptions::new().write(true).open(format!("{}",filename)) {
         Ok(file) => file,
         Err(e) => {
             println!("error HERE :  {}", e);
             return Err(e)
         },
     };
-    file.write_all(&serialized_database)?;
+    match file.write_all(&serialized_database) {
+        Ok(file) => {
+            file;
+            println!("saved file successfully")
+        },
+        Err(e) => {
+            println!("ERROR IN SAVING {}", e);
+            return Err(e)
+            
+        }
+    };
     Ok(())
 }
 
@@ -109,20 +121,19 @@ pub fn load_database(filename: &str) -> std::io::Result<HashMap<String, Vec<u8>>
         },
     };
     let mut serialized_database = Vec::new();
-    let _ = match file.read_to_end(&mut serialized_database) {
-        Ok(file) => file,
+    let _ = match file.read_to_end(&mut serialized_database)  {
+        Ok(sd) => sd,
         Err(e) => {
-            println!("error HERE :  {}", e);
-            return Err(e.into()); // Convert the error type using the `Into` trait
-        },
+            println!("ERROR HERE : {}", e);
+            return Err(e);
+        } 
     };
-    let database = match bincode::deserialize(&serialized_database) {
-        Ok(data) => {
-            data
-        },
-        Err(e) => {
-            println!("unable to put read data into memory");
-            Err(e)
-        }
+    if serialized_database.len() < 1 {
+        Ok(HashMap::new())
+    } else {
+        let database = bincode::deserialize(&serialized_database).unwrap();
+        Ok(database)
     }
+    
+    
 }

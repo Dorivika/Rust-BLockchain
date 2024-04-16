@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, os::windows::process};
 
 use blockchain::BlockChain;
 use getopts::Options;
@@ -23,7 +23,7 @@ impl <'b>CommandLine<'b> {
         let args: Vec<String> = env::args().collect();
         if args.len() < 2 {
             self.print_usage();
-            //exit program
+            std::process::exit(0);
         }
     }
 
@@ -39,8 +39,8 @@ impl <'b>CommandLine<'b> {
             let block = iter.next().unwrap();
 
             println!("prev hash {}", block.prev_hash.clone().unwrap());
-            println!("prev hash {}", block.data.clone().unwrap());
-            println!("prev hash {}", block.hash.clone().unwrap());
+            println!("DATA {}", block.data.clone().unwrap());
+            println!("block hash {}", block.hash.clone().unwrap());
             
             let pow = proof::new_proof(&block);
             println!("POW : {}", proof::validate(&pow));
@@ -53,30 +53,22 @@ impl <'b>CommandLine<'b> {
     }
 
     fn run(&mut self) {
+        self.validate_args();
+
         let args: Vec<String> = env::args().collect();
-
-        let mut opts = Options::new();
-        opts.optflag("", "add", "add a block to the chain");
-        opts.optflag("", "print", "prints the blocks");
-
-        let matches = match opts.parse(&args[1..]) {
-            Ok(m) => { m }
-            Err(f) => { panic!("{}", f.to_string()) }
-        };
-
-        if matches.opt_present("add") {
-            let data = matches.free.join(" ");
-            self.add_block(data);
-        } else if matches.opt_present("print") {
+        let query = &args[1];
+        if query == "add" {
+            let data = &args[2];
+            self.add_block(data.to_string().clone());
+            std::process::exit(0);
+        } else if query=="print" {
             self.print_chain();
-        } else {
-            self.print_usage();
+            std::process::exit(0);
         }
     }
 
 } 
 fn main() { 
-    
     let mut chain = blockchain::BlockChain::init_blockchain();
     let mut cli = CommandLine {
         blockchain : & mut chain,
