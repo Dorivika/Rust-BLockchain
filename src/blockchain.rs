@@ -1,6 +1,8 @@
 use std::{collections::HashMap, fs::{File, OpenOptions}, io::{Read, Write}, sync::Mutex};
 use lazy_static::lazy_static;
-use crate::block::{self, *};
+use num::ToPrimitive;
+use crate::{block::{self, *}, transaction::{self, Transaction}};
+use hex;
 lazy_static! {
     pub static ref DATABASE: Mutex<HashMap<String, Vec<u8>>> = Mutex::new(load_database("db.txt").unwrap());
 }
@@ -19,15 +21,27 @@ pub struct BlockChainIterator <'a> {
 
 
 impl <'a>BlockChain <'a>{
-    pub fn init_blockchain() -> BlockChain<'a>{
+
+    pub fn iterator(&self) -> BlockChainIterator {
+        BlockChainIterator {
+            currhash : self.lasthash.clone(),
+            database : self.database,
+        }
+    } 
+
+    pub fn init_blockchain(address : String) -> BlockChain<'a>{
         if DATABASE.lock().unwrap().is_empty() == true {
-            let genesis = block::Genesis();
+            //SET GENESIS DATA
+
+            let cbtx = transaction::coin_base_tx(address, "genesisData".to_string());
+            let genesis = block::Genesis(cbtx);
             println!("Genesis proved");
-            let gen_hash = genesis.hash.clone().unwrap();
+            let gen_hash = &genesis.hash.unwrap();
             let serialized_genesis = bincode::serialize(&genesis).unwrap();
-            DATABASE.lock().unwrap().insert(gen_hash.clone(), serialized_genesis);
-            DATABASE.lock().unwrap().insert("lh".to_string(),gen_hash.clone().into_bytes());
-            save_database(&DATABASE.lock().unwrap(), "db.txt").unwrap();
+            let mut binding = DATABASE.lock().unwrap();
+            binding.insert(gen_hash.clone(), serialized_genesis);
+            binding.insert("lh".to_string(),gen_hash.clone().into_bytes());
+            save_database(&binding, "db.txt").unwrap();
             BlockChain {
                 lasthash : gen_hash.clone(),
                 database : & DATABASE,
@@ -35,10 +49,27 @@ impl <'a>BlockChain <'a>{
             
         } else {
             println!("Already a chain in database");
-            let lasthash = String::from_utf8_lossy(&DATABASE.lock().unwrap().get("lh").unwrap()).to_string();
+            std::process::exit(0)
+        }
+    }
+    pub fn continue_blockchain(address : String) -> BlockChain<'a>{
+        if DATABASE.lock().unwrap().is_empty() == true {
+            println!("Database Doest not exist. Pro Tip : Create One");
+            std::process::exit(0);
+            
+        } else {
+            let cbtx = transaction::coin_base_tx(address, "genesisData".to_string());
+            let genesis = block::Genesis(cbtx);
+            println!("Genesis proved");
+            let gen_hash = &genesis.hash.unwrap();
+            let serialized_genesis = bincode::serialize(&genesis).unwrap();
+            let mut binding = DATABASE.lock().unwrap();
+            binding.insert(gen_hash.clone(), serialized_genesis);
+            binding.insert("lh".to_string(),gen_hash.clone().into_bytes());
+            save_database(&binding, "db.txt").unwrap();
             BlockChain {
-                lasthash,
-                database: & DATABASE,
+                lasthash : gen_hash.clone(),
+                database : & DATABASE,
             }
         }
     }
@@ -61,12 +92,38 @@ impl <'a>BlockChain <'a>{
 
     }   
 
-    pub fn iterator(&self) -> BlockChainIterator {
-        BlockChainIterator {
-            currhash : self.lasthash.clone(),
-            database : self.database,
+    pub fn find_unspent_tx(&self, address : String) {
+        let mut unspent_tx : Vec<&Transaction>;
+        let spent_txos : HashMap<String, &i32>;
+
+        let mut iter = self.iterator();
+
+        loop {
+            let block = iter.next().unwrap();
+            for tx in &block.transactions.unwrap() {
+                let tx_as_slice = bincode::serialize(&tx).unwrap().as_slice();
+                let txid = hex::encode(tx_as_slice);
+
+                'outputs: for (outidx, out) in tx.outputs.iter().enumerate() {
+                    if spent_txos.get(&txid) == None {
+                        for spentout in spent_txos.get(&txid) {
+                            if *spentout == &outidx.to_i32().unwrap() {
+                                continue 'outputs;
+                            }
+                        }
+                    }if out.can_be_unlock(&address) {
+                        unspent_tx.push(&tx);
+                    }
+                }
+
+            }
+            if block.prev_hash.unwrap().len() == 0 {
+                break;
+            }
+            
+
         }
-    } 
+    }
 }
 
 impl<'a> Iterator for BlockChainIterator<'a> {

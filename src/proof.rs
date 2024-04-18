@@ -1,4 +1,4 @@
-const DIFFICULTY:u32 = 10;
+const DIFFICULTY:u32 = 13;
 
 
 use crate::block::Block;
@@ -45,9 +45,9 @@ impl  <'a>Pow <'a> {
         (0, "".to_string())
     }
     fn init_data (p : &'a Pow , nonce : i32) -> String {
-        let data = format!("{},{},{},{:?},{:?}", 
+        let data = format!("{},{:?},{},{:?},{:?}", 
         p.Block.prev_hash.as_deref().unwrap_or(""),
-        p.Block.data.as_deref().unwrap_or(""),
+        p.Block.hash_transacitons(),
         "".to_string(),
         nonce.to_ne_bytes(),
         DIFFICULTY.to_ne_bytes()

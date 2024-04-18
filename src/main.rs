@@ -5,6 +5,7 @@ use blockchain::BlockChain;
 mod block;
 mod proof;
 mod blockchain;
+mod transaction;
 
 
 struct CommandLine <'b> {
