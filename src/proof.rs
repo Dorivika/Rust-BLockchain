@@ -1,13 +1,15 @@
 const DIFFICULTY:u32 = 13;
 
 
+use std::rc::Rc;
+
 use crate::block::Block;
 use sha2::{Digest, Sha256};
 
 use num::{bigint::BigInt, Num};
 
 pub struct Pow<'a> {
-    Block: &'a Block,
+    Block: &'a Block<'a>,
     Target: BigInt,
 }
 
@@ -21,32 +23,31 @@ pub fn new_proof<'a>(b: &'a Block) -> Pow<'a> {
 }
 
 impl  <'a>Pow <'a> {
-    pub fn run(&self) -> (i32, String) {
+    pub fn run(&self) -> Option<(i32, &str)> {
     
         let mut nonce = 0;
     
         while nonce < i32::MAX {
-            let data = Pow::init_data(self, nonce);
+            let data = Pow::init_data(self, Rc::new(nonce));
     
             let mut hasher = Sha256::new();
             hasher.update(data.as_bytes());
             let hash = hasher.finalize();
-            let hash_as_str = format!("{:x}",hash);
+            let hash_as_str = format!("{:x}",hash).as_str();
             println!("hash : {} ", hash_as_str);
     
             let hash_bigint = BigInt::from_str_radix(&hash_as_str, 16).unwrap();
     
             if hash_bigint < self.Target {
-                return (nonce, hash_as_str);
+                return Some((nonce, hash_as_str));
             }
-    
             nonce+=1
         }
-        (0, "".to_string())
+        None
     }
-    fn init_data (p : &'a Pow , nonce : i32) -> String {
+    fn init_data (p : &'a Pow , nonce : Rc<i32>) -> String {
         let data = format!("{},{:?},{},{:?},{:?}", 
-        p.Block.prev_hash.as_deref().unwrap_or(""),
+        p.Block.prev_hash.unwrap_or(Rc::new("")),
         p.Block.hash_transacitons(),
         "".to_string(),
         nonce.to_ne_bytes(),

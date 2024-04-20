@@ -1,3 +1,6 @@
+use std::ops::Deref;
+use std::rc::Rc;
+use std::sync::Arc;
 use crate::proof;
 use crate::transaction::Transaction;
 use serde::Deserialize;
@@ -5,15 +8,15 @@ use serde::Serialize;
 use sha2::Digest;
 use sha2::Sha256;
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Block {
-    pub hash: Option<String>,
+#[derive(Debug,Serialize, Deserialize)]
+pub struct Block<'a> {
+    pub hash: Option<Arc<&'a str>>,
     pub transactions: Option<Vec<Transaction>>,
-    pub prev_hash: Option<String>,
-    pub nonce: Option<i32>,
+    pub prev_hash: Option<Arc<&'a str>>,
+    pub nonce: Option<Rc<i32>>,
 }
 
-impl Block {
+impl <'a>Block<'a> {
     pub fn hash_transacitons(&self) -> Vec<u8>{
         let mut tx_hashes: Vec<Vec<u8>> = Vec::new();
         let tx_hash: Vec<u8>;
@@ -28,23 +31,22 @@ impl Block {
     }
 }
 
-pub fn Genesis(coinbase : Transaction) -> Block {
-    create_block(Some(vec![coinbase]), Some("".to_string()))
+pub fn Genesis(coinbase : Transaction) -> Block<'static> {
+    create_block(Some(vec![coinbase]), Arc::new("".deref()))
 }
 
-pub fn create_block(txs: Option<Vec<Transaction>>, prev_hash: Option<String>) -> Block {
+pub fn create_block<'a>(txs: Option<Vec<Transaction>>, prev_hash: Arc<&str>) -> Block<'a> {
     let mut block = Block {
         hash: None,
         transactions: txs,
-        prev_hash,
-        nonce: Some(0),
+        prev_hash : Some(prev_hash),
+        nonce: Some(0.into()),
     };
     let pow = proof::new_proof(&block);
-    let (nonce, hash) = pow.run();
-    let nonce = Some(nonce);
+    let (nonce, hash) = pow.run().unwrap();
     let hash = Some(hash);
-    block.nonce = nonce;
-    block.hash = hash;
+    block.nonce = Some(Rc::new(nonce));
+    block.hash = Some(Arc::new(hash.unwrap()));
     block
 }
 

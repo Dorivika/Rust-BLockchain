@@ -1,7 +1,7 @@
-use std::{collections::HashMap, fs::{File, OpenOptions}, io::{Read, Write}, sync::Mutex};
+use std::{collections::HashMap, fs::{File, OpenOptions}, io::{Read, Write}, ops::Deref, sync::{Arc, Mutex}};
 use lazy_static::lazy_static;
 use num::ToPrimitive;
-use crate::{block::{self, *}, transaction::{self, Transaction}};
+use crate::{block::{self, *}, transaction::{self, Transaction, TxOutput}};
 use hex;
 lazy_static! {
     pub static ref DATABASE: Mutex<HashMap<String, Vec<u8>>> = Mutex::new(load_database("db.txt").unwrap());
@@ -9,22 +9,21 @@ lazy_static! {
 
 #[derive(Debug)]
 pub struct BlockChain <'a> {
-    lasthash : String,
+    lasthash : Arc<str>,
     database : &'a Mutex<HashMap<String, Vec<u8>>>,
 }
 
 
 pub struct BlockChainIterator <'a> {
-    currhash : String,
+    currhash : Arc<str>,
     database : &'a Mutex<HashMap<String, Vec<u8>>>,
 }
 
 
 impl <'a>BlockChain <'a>{
-
     pub fn iterator(&self) -> BlockChainIterator {
         BlockChainIterator {
-            currhash : self.lasthash.clone(),
+            currhash : self.lasthash,
             database : self.database,
         }
     } 
@@ -32,18 +31,23 @@ impl <'a>BlockChain <'a>{
     pub fn init_blockchain(address : String) -> BlockChain<'a>{
         if DATABASE.lock().unwrap().is_empty() == true {
             //SET GENESIS DATA
-
             let cbtx = transaction::coin_base_tx(address, "genesisData".to_string());
             let genesis = block::Genesis(cbtx);
             println!("Genesis proved");
-            let gen_hash = &genesis.hash.unwrap();
             let serialized_genesis = bincode::serialize(&genesis).unwrap();
-            let mut binding = DATABASE.lock().unwrap();
-            binding.insert(gen_hash.clone(), serialized_genesis);
-            binding.insert("lh".to_string(),gen_hash.clone().into_bytes());
-            save_database(&binding, "db.txt").unwrap();
+            let mut binding = match DATABASE.lock() {
+                Ok(db) => db,
+                Err(e) => {
+                    println!("Unable to acquire mutex lock in init_blockchain");
+                    std::process::exit(0)
+                }
+            };
+            let gen_hash = *genesis.hash.unwrap();
+            binding.insert(gen_hash.to_string(), serialized_genesis);
+            binding.insert("lh".to_string(), gen_hash.as_bytes().to_vec());
+            save_database(&binding.deref(), "db.txt").unwrap();
             BlockChain {
-                lasthash : gen_hash.clone(),
+                lasthash : Arc::from(gen_hash),
                 database : & DATABASE,
             }
             
@@ -61,58 +65,72 @@ impl <'a>BlockChain <'a>{
             let cbtx = transaction::coin_base_tx(address, "genesisData".to_string());
             let genesis = block::Genesis(cbtx);
             println!("Genesis proved");
-            let gen_hash = &genesis.hash.unwrap();
             let serialized_genesis = bincode::serialize(&genesis).unwrap();
-            let mut binding = DATABASE.lock().unwrap();
-            binding.insert(gen_hash.clone(), serialized_genesis);
-            binding.insert("lh".to_string(),gen_hash.clone().into_bytes());
-            save_database(&binding, "db.txt").unwrap();
+            let mut binding = match DATABASE.lock() {
+                Ok(db) => db,
+                Err(e) => {
+                    println!("Unable to acquire mutex lock in init_blockchain");
+                    std::process::exit(0)
+                }
+            };
+            let gen_hash = *genesis.hash.unwrap();
+            binding.insert(gen_hash.to_string(), serialized_genesis);
+            binding.insert("lh".to_string(), gen_hash.as_bytes().to_vec());
+            save_database(&binding.deref(), "db.txt").unwrap();
             BlockChain {
-                lasthash : gen_hash.clone(),
+                lasthash : Arc::from(gen_hash),
                 database : & DATABASE,
             }
         }
     }
 
-    pub fn add_block(&mut self, data : String) {
+    pub fn add_block(&mut self, data : Transaction) {
         let mut binding = self.database.lock().unwrap();
         let item = binding.get("lh").unwrap();
-        let item = String::from_utf8_lossy(item).to_string();
+        let item = std::str::from_utf8(item).unwrap();
 
-        let new_block = create_block(Some(data), Some(item.clone()));
+        let new_block = create_block(Some(vec![data]), Arc::new(item));
         println!("BLOCK CREATED");
         println!("{:?}", new_block);
         let serialized_newblock = bincode::serialize(&new_block).unwrap();
         println!("Block Serialized");
-        binding.insert(new_block.hash.clone().unwrap(),serialized_newblock);
+        let new_block_hash = *new_block.hash.unwrap();
+        binding.insert(new_block_hash.to_string(),serialized_newblock);
         
-        binding.insert("lh".to_string(), new_block.hash.unwrap().into_bytes());
+        binding.insert("lh".to_string(), new_block_hash.as_bytes().to_vec());
 
         save_database(&binding, "db.txt").unwrap();
 
     }   
 
-    pub fn find_unspent_tx(&self, address : String) {
+    pub fn find_unspent_tx<'b>(&'b self, address : &str) -> Vec<&'b Transaction> {
         let mut unspent_tx : Vec<&Transaction>;
-        let spent_txos : HashMap<String, &i32>;
+        let mut spent_txos : HashMap<String, Vec<&i32>>;
 
         let mut iter = self.iterator();
 
         loop {
             let block = iter.next().unwrap();
-            for tx in &block.transactions.unwrap() {
+            for tx in block.transactions.unwrap() {
                 let tx_as_slice = bincode::serialize(&tx).unwrap().as_slice();
                 let txid = hex::encode(tx_as_slice);
 
                 'outputs: for (outidx, out) in tx.outputs.iter().enumerate() {
                     if spent_txos.get(&txid) == None {
-                        for spentout in spent_txos.get(&txid) {
-                            if *spentout == &outidx.to_i32().unwrap() {
+                        for spentout in spent_txos.get(&txid).unwrap() {
+                            if *spentout == &outidx.to_i32().unwrap(){
                                 continue 'outputs;
                             }
                         }
-                    }if out.can_be_unlock(&address) {
+                    }if out.can_be_unlock(address) {
                         unspent_tx.push(&tx);
+                    }
+                } if tx.is_coinbase() == false {
+                    for _in in tx.inputs {
+                        if _in.can_unlock(address) {
+                            let in_txid = hex::encode(_in.id);
+                            spent_txos.entry(in_txid).or_insert(Vec::new()).push(&_in.out);
+                        }
                     }
                 }
 
@@ -120,25 +138,39 @@ impl <'a>BlockChain <'a>{
             if block.prev_hash.unwrap().len() == 0 {
                 break;
             }
-            
-
         }
+        unspent_tx
     }
+
+    pub fn find_utxos(& self, address : String) -> Vec<TxOutput> {
+        let mut utxo :Vec<TxOutput>;
+        let usnpenttrans = self.find_unspent_tx(&address.as_str());
+        for tx in usnpenttrans {
+            for out in tx.outputs {
+                if out.can_be_unlock(&address){
+                    utxo.push(out)
+                }
+            }
+        };
+        return utxo;
+
+    }
+
 }
 
 impl<'a> Iterator for BlockChainIterator<'a> {
-    type Item = Block;
+    type Item = Block<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let item = &self.currhash;
-        let block_encoded = self.database.lock().unwrap().get(item).unwrap().clone();
+        let block_encoded = self.database.lock().unwrap().get(&item.to_string()).unwrap().clone();
 
         let block: Block = match bincode::deserialize(&block_encoded) {
             Ok(block) => block,
             Err(_) => return None,
         };
 
-        self.currhash = block.prev_hash.clone().unwrap();
+        self.currhash = (*block.prev_hash.unwrap()).into();
         Some(block)
     }
 }
