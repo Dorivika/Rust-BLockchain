@@ -3,7 +3,9 @@ use std::rc::Rc;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-#[derive(Serialize, Deserialize, Debug)]
+use crate::blockchain::BlockChain;
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Transaction {
     pub id : Option<Vec<u8>>,
     pub inputs : Vec<TxInput>,
@@ -30,7 +32,7 @@ impl Transaction {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TxOutput {
     pub value : Rc<i32>,
     pub pubkey : Rc<str>, 
@@ -42,7 +44,7 @@ impl TxOutput {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TxInput {
     pub id : Vec<u8>,
     pub out : Rc<i32>,
@@ -78,3 +80,53 @@ pub fn coin_base_tx(to : String, mut data: String) -> Transaction {
     tx
 
 }
+
+pub fn new_transaction<'a >(chain : &'a BlockChain, from :&str, to : &str, amount : &i32) -> &'a Transaction {
+    let mut inputs : Vec<TxInput>;
+    let mut outputs : Vec<TxOutput>;
+
+    let (acc,valid_outs) = chain.find_spos(from, amount);
+
+    if acc < *amount {
+        println!(" ERROR NOT ENOUGH FUNDS");
+        std::process::exit(0)
+    };
+    for (txid , outs) in valid_outs {
+        let txid = match hex::decode(&txid) {
+            Ok(txid) => txid,
+            Err(e) => {
+                println!("Couldn't decode txid in transaction::new_transaction");
+                std::process::exit(0)
+            }
+        };
+        for out in outs {
+            let input = TxInput {
+                id : txid,
+                out : Rc::new(out),
+                sig : Rc::from(from),
+            };
+            inputs.push(input);
+        }
+        
+        outputs.push(TxOutput {
+            value : Rc::new(*amount),
+            pubkey : Rc::from(to),
+        });
+
+        if acc > *amount {
+            outputs.push(TxOutput {
+                value : Rc::new(acc-*amount),
+                pubkey : Rc::from(from),
+            });
+        }
+    };
+
+    let tx = Transaction {
+        id : None,
+        inputs,
+        outputs,
+    };
+    tx.set_id();
+    &tx
+
+ }

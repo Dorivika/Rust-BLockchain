@@ -1,6 +1,5 @@
-use std::{collections::HashMap, fs::{File, OpenOptions}, io::{Read, Write}, ops::Deref, sync::{Arc, Mutex}};
+use std::{cell::RefCell, collections::HashMap, fs::{File, OpenOptions}, io::{Read, Write}, ops::Deref, rc::Rc, sync::{Arc, Mutex}};
 use lazy_static::lazy_static;
-use num::ToPrimitive;
 use crate::{block::{self, *}, transaction::{self, Transaction, TxOutput}};
 use hex;
 lazy_static! {
@@ -9,23 +8,25 @@ lazy_static! {
 
 #[derive(Debug)]
 pub struct BlockChain <'a> {
-    lasthash : Arc<str>,
+    lasthash : String,
     database : &'a Mutex<HashMap<String, Vec<u8>>>,
 }
 
 
 pub struct BlockChainIterator <'a> {
-    currhash : Arc<str>,
+    currhash : String,
     database : &'a Mutex<HashMap<String, Vec<u8>>>,
 }
 
 
 impl <'a>BlockChain <'a>{
-    pub fn iterator(&self) -> BlockChainIterator {
-        BlockChainIterator {
-            currhash : self.lasthash,
+    pub fn iterator(&self) -> RefCell<BlockChainIterator> {
+        let bs = BlockChainIterator {
+            currhash : self.lasthash.to_owned(),
             database : self.database,
-        }
+        };
+
+        RefCell::new(bs)
     } 
 
     pub fn init_blockchain(address : String) -> BlockChain<'a>{
@@ -42,12 +43,12 @@ impl <'a>BlockChain <'a>{
                     std::process::exit(0)
                 }
             };
-            let gen_hash = *genesis.hash.unwrap();
+            let gen_hash = genesis.hash.unwrap().to_string();
             binding.insert(gen_hash.to_string(), serialized_genesis);
             binding.insert("lh".to_string(), gen_hash.as_bytes().to_vec());
             save_database(&binding.deref(), "db.txt").unwrap();
             BlockChain {
-                lasthash : Arc::from(gen_hash),
+                lasthash : gen_hash,
                 database : & DATABASE,
             }
             
@@ -56,13 +57,13 @@ impl <'a>BlockChain <'a>{
             std::process::exit(0)
         }
     }
-    pub fn continue_blockchain(address : String) -> BlockChain<'a>{
+    pub fn continue_blockchain(address : &str) -> BlockChain<'a>{
         if DATABASE.lock().unwrap().is_empty() == true {
             println!("Database Doest not exist. Pro Tip : Create One");
             std::process::exit(0);
             
         } else {
-            let cbtx = transaction::coin_base_tx(address, "genesisData".to_string());
+            let cbtx = transaction::coin_base_tx(address.to_string(), "genesisData".to_string());
             let genesis = block::Genesis(cbtx);
             println!("Genesis proved");
             let serialized_genesis = bincode::serialize(&genesis).unwrap();
@@ -73,28 +74,28 @@ impl <'a>BlockChain <'a>{
                     std::process::exit(0)
                 }
             };
-            let gen_hash = *genesis.hash.unwrap();
+            let gen_hash = genesis.hash.unwrap().to_string();
             binding.insert(gen_hash.to_string(), serialized_genesis);
             binding.insert("lh".to_string(), gen_hash.as_bytes().to_vec());
             save_database(&binding.deref(), "db.txt").unwrap();
             BlockChain {
-                lasthash : Arc::from(gen_hash),
+                lasthash : gen_hash,
                 database : & DATABASE,
             }
         }
     }
 
-    pub fn add_block(&mut self, data : Transaction) {
+    pub fn add_block(&mut self, data : Vec<Transaction>) {
         let mut binding = self.database.lock().unwrap();
         let item = binding.get("lh").unwrap();
         let item = std::str::from_utf8(item).unwrap();
 
-        let new_block = create_block(Some(vec![data]), Arc::new(item));
+        let new_block = create_block(Some(Rc::new(data)), Arc::from(item));
         println!("BLOCK CREATED");
         println!("{:?}", new_block);
         let serialized_newblock = bincode::serialize(&new_block).unwrap();
         println!("Block Serialized");
-        let new_block_hash = *new_block.hash.unwrap();
+        let new_block_hash = new_block.hash.unwrap();
         binding.insert(new_block_hash.to_string(),serialized_newblock);
         
         binding.insert("lh".to_string(), new_block_hash.as_bytes().to_vec());
@@ -103,47 +104,52 @@ impl <'a>BlockChain <'a>{
 
     }   
 
-    pub fn find_unspent_tx<'b>(&'b self, address : &str) -> Vec<&'b Transaction> {
-        let mut unspent_tx : Vec<&Transaction>;
-        let mut spent_txos : HashMap<String, Vec<&i32>>;
+    pub fn find_unspent_tx(&'a self, address : &str) -> Vec<Transaction> {
+        let mut unspent_tx : Vec<Transaction> = vec![];
+        let mut spent_txos : HashMap<String, Vec<i32>>;
 
         let mut iter = self.iterator();
-
-        loop {
-            let block = iter.next().unwrap();
-            for tx in block.transactions.unwrap() {
-                let tx_as_slice = bincode::serialize(&tx).unwrap().as_slice();
+        spent_txos = HashMap::new();
+        'a : loop {
+            let block = match iter.borrow_mut().next() {
+                Some(b) => b,
+                None => break 'a,
+            };
+            if let Some(transaction) = block.transactions{ 
+            for tx in transaction.as_ref() {
+                let serialized_tx = bincode::serialize(&tx).unwrap();
+                let tx_as_slice = serialized_tx.as_slice();
                 let txid = hex::encode(tx_as_slice);
-
-                'outputs: for (outidx, out) in tx.outputs.iter().enumerate() {
-                    if spent_txos.get(&txid) == None {
-                        for spentout in spent_txos.get(&txid).unwrap() {
-                            if *spentout == &outidx.to_i32().unwrap(){
-                                continue 'outputs;
+                'unspent_tx : for (outidx, out) in tx.outputs.iter().enumerate() {
+                    if !spent_txos.get(&txid).unwrap().is_empty() {
+                        let spentouts =  spent_txos.get(&txid).unwrap();
+                        for spentout in spentouts {
+                            if *spentout == outidx as i32 {
+                                continue 'unspent_tx
                             }
                         }
-                    }if out.can_be_unlock(address) {
-                        unspent_tx.push(&tx);
                     }
-                } if tx.is_coinbase() == false {
-                    for _in in tx.inputs {
-                        if _in.can_unlock(address) {
-                            let in_txid = hex::encode(_in.id);
-                            spent_txos.entry(in_txid).or_insert(Vec::new()).push(&_in.out);
-                        }
+                    if out.can_be_unlock(address){
+                        unspent_tx.push(tx.clone());
                     }
                 }
-
-            }
-            if block.prev_hash.unwrap().len() == 0 {
-                break;
+                for _in in &tx.inputs {
+                    if _in.can_unlock(address) {
+                        let in_txid = hex::encode(&_in.id);
+                        spent_txos.entry(in_txid).or_insert(Vec::new()).push(*_in.out);
+                    }
+                }
             }
         }
+            if block.prev_hash.unwrap().len() == 0 {
+                break 'a
+            };
+        };
         unspent_tx
     }
 
     pub fn find_utxos(& self, address : String) -> Vec<TxOutput> {
-        let mut utxo :Vec<TxOutput>;
+        let mut utxo :Vec<TxOutput> = vec![];
         let usnpenttrans = self.find_unspent_tx(&address.as_str());
         for tx in usnpenttrans {
             for out in tx.outputs {
@@ -156,10 +162,33 @@ impl <'a>BlockChain <'a>{
 
     }
 
+    pub fn find_spos(&self, address : &str, amount : &i32) -> (i32, HashMap<String, Vec<i32>>) {
+        let mut unspentouts : HashMap<String, Vec<i32>> = HashMap::new();
+        let unspent_tx = self.find_unspent_tx(&address);
+        let mut accumulated = 0;
+
+        'Work: for tx in unspent_tx {
+            let txid_encoded = hex::encode(&tx.id.unwrap());
+            let txid = txid_encoded.as_str();
+
+            for (outidx, out) in tx.outputs.iter().enumerate(){
+                if out.can_be_unlock(&address) && accumulated<*amount{
+                    accumulated+=*out.value;
+                    unspentouts.entry(txid.to_string()).or_insert(Vec::new()).push(outidx.try_into().unwrap());
+
+                    if accumulated >= *amount {
+                        break 'Work
+                    }
+                }
+            }
+        }
+        (accumulated, unspentouts)
+    }
+
 }
 
 impl<'a> Iterator for BlockChainIterator<'a> {
-    type Item = Block<'a>;
+    type Item = Block;
 
     fn next(&mut self) -> Option<Self::Item> {
         let item = &self.currhash;
