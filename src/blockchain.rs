@@ -121,7 +121,7 @@ impl <'a>BlockChain <'a>{
                 let tx_as_slice = serialized_tx.as_slice();
                 let txid = hex::encode(tx_as_slice);
                 'unspent_tx : for (outidx, out) in tx.outputs.iter().enumerate() {
-                    if !spent_txos.get(&txid).unwrap().is_empty() {
+                    if spent_txos.contains_key(&txid) {
                         let spentouts =  spent_txos.get(&txid).unwrap();
                         for spentout in spentouts {
                             if *spentout == outidx as i32 {
@@ -148,9 +148,9 @@ impl <'a>BlockChain <'a>{
         unspent_tx
     }
 
-    pub fn find_utxos(& self, address : String) -> Vec<TxOutput> {
+    pub fn find_utxos(& self, address : &str) -> Vec<TxOutput> {
         let mut utxo :Vec<TxOutput> = vec![];
-        let usnpenttrans = self.find_unspent_tx(&address.as_str());
+        let usnpenttrans = self.find_unspent_tx(&address);
         for tx in usnpenttrans {
             for out in tx.outputs {
                 if out.can_be_unlock(&address){
@@ -192,14 +192,21 @@ impl<'a> Iterator for BlockChainIterator<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let item = &self.currhash;
-        let block_encoded = self.database.lock().unwrap().get(&item.to_string()).unwrap().clone();
+        let binding =  match self.database.lock() {
+            Ok(db) => db,
+            Err(e) => {
+                println!("unable to acquire mutex lock in BlockchainIteraor");
+                std::process::exit(0)
+            }
+        };
+        let block_encoded = binding.get(&item.to_string()).unwrap();
 
         let block: Block = match bincode::deserialize(&block_encoded) {
             Ok(block) => block,
             Err(_) => return None,
         };
 
-        self.currhash = (*block.prev_hash.unwrap()).into();
+        self.currhash = block.prev_hash.as_ref().unwrap().to_string();
         Some(block)
     }
 }

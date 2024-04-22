@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{ops::Deref, rc::Rc};
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -71,19 +71,19 @@ pub fn coin_base_tx(to : String, mut data: String) -> Transaction {
         value : Rc::new(100),
         pubkey : Rc::from(to),
     };
-    let tx = Transaction {
+    let mut tx = Transaction {
         id : None,
         inputs : vec![txin],
         outputs : vec![txout],
     };
-    let tx = tx.set_id();
+    let mut tx = tx.set_id();
     tx
 
 }
 
-pub fn new_transaction<'a >(chain : &'a BlockChain, from :&str, to : &str, amount : &i32) -> &'a Transaction {
-    let mut inputs : Vec<TxInput>;
-    let mut outputs : Vec<TxOutput>;
+pub fn new_transaction<'a >(chain : &'a BlockChain, from :&str, to : &str, amount : &i32) -> Transaction {
+    let mut inputs : Vec<TxInput> = vec![];
+    let mut outputs : Vec<TxOutput> = vec![];
 
     let (acc,valid_outs) = chain.find_spos(from, amount);
 
@@ -101,7 +101,8 @@ pub fn new_transaction<'a >(chain : &'a BlockChain, from :&str, to : &str, amoun
         };
         for out in outs {
             let input = TxInput {
-                id : txid,
+                //FIX CLONE HERE
+                id : txid.clone(),
                 out : Rc::new(out),
                 sig : Rc::from(from),
             };
@@ -126,7 +127,7 @@ pub fn new_transaction<'a >(chain : &'a BlockChain, from :&str, to : &str, amoun
         inputs,
         outputs,
     };
-    tx.set_id();
-    &tx
+    let tx = tx.set_id();
+    tx
 
  }

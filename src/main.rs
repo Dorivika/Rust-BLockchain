@@ -58,7 +58,7 @@ impl <'b>CommandLine<'b> {
         let chain = BlockChain::continue_blockchain(&address.as_str());
 
         let mut balance = 0;
-        let utxo_s = chain.find_utxos(address);
+        let utxo_s = chain.find_utxos(&address);
 
         for out in utxo_s {
             balance += *out.value;
@@ -72,7 +72,7 @@ impl <'b>CommandLine<'b> {
 
         let tx = transaction::new_transaction(&chain, &from, &to, &amount);
 
-        chain.add_block(vec![*tx]);
+        chain.add_block(vec![tx]);
         println!("SUCCESS!!")
     }
 

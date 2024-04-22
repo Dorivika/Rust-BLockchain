@@ -28,7 +28,7 @@ impl <'a>Pow <'a>{
         let mut nonce = 0;
     
         while nonce < i32::MAX {
-            let data = Pow::init_data(self, Rc::new(nonce));
+            let data = Pow::init_data(self, &Rc::new(nonce));
     
             let mut hasher = Sha256::new();
             hasher.update(data.as_bytes());
@@ -45,14 +45,13 @@ impl <'a>Pow <'a>{
         }
         None
     }
-    fn init_data (p : &Pow , nonce : Rc<i32>) -> String {
+    fn init_data (p : &Pow , nonce : &Rc<i32>) -> String {
         let data = format!("{},{:?},{},{:?},{:?}", 
-        p.Block.prev_hash.unwrap_or(Arc::from("")),
+        p.Block.prev_hash.as_ref().unwrap(),
         p.Block.hash_transacitons(),
         "".to_string(),
         nonce.to_ne_bytes(),
-        DIFFICULTY.to_ne_bytes()
-        );
+        DIFFICULTY.to_ne_bytes());
         data
     }
     
@@ -61,7 +60,7 @@ impl <'a>Pow <'a>{
 
 
 pub fn validate(p : &Pow) -> bool {
-    let data = Pow::init_data(p, p.Block.nonce.unwrap());
+    let data = Pow::init_data(p, &p.Block.nonce.as_ref().unwrap());
 
     let mut hasher = Sha256::new();
     hasher.update(data);
