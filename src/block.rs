@@ -1,4 +1,4 @@
-use std::ops::Deref;
+
 use std::rc::Rc;
 use std::sync::Arc;
 use crate::proof;

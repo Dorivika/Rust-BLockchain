@@ -38,7 +38,7 @@ impl <'a>BlockChain <'a>{
             let serialized_genesis = bincode::serialize(&genesis).unwrap();
             let mut binding = match DATABASE.lock() {
                 Ok(db) => db,
-                Err(e) => {
+                _ => {
                     println!("Unable to acquire mutex lock in init_blockchain");
                     std::process::exit(0)
                 }
@@ -72,7 +72,6 @@ impl <'a>BlockChain <'a>{
             };
             let item = match binding.get("lh") {
                 Some(lh) => {
-                    println!("got lh");
                     lh
                 },
                 _ => {
@@ -113,10 +112,10 @@ impl <'a>BlockChain <'a>{
 
         let mut iter = self.iterator();
         spent_txos = HashMap::new();
-        'a : loop {
+        loop {
             let block = match iter.borrow_mut().next() {
                 Some(b) => b,
-                None => break 'a,
+                None => break,
             };
             if let Some(transaction) = block.transactions{ 
             for tx in transaction.as_ref() {
@@ -136,16 +135,18 @@ impl <'a>BlockChain <'a>{
                         unspent_tx.push(tx.clone());
                     }
                 }
-                for _in in &tx.inputs {
+                if tx.is_coinbase() == false{
+                    for _in in &tx.inputs {
                     if _in.can_unlock(address) {
                         let in_txid = hex::encode(&_in.id);
                         spent_txos.entry(in_txid).or_insert(Vec::new()).push(*_in.out);
                     }
                 }
             }
+            }
         }
             if block.prev_hash.unwrap().len() == 0 {
-                break 'a
+                break
             };
         };
         unspent_tx

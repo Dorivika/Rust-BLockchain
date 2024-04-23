@@ -1,4 +1,4 @@
-use std::{ops::Deref, rc::Rc};
+use std::rc::Rc;
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -91,6 +91,7 @@ pub fn new_transaction<'a >(chain : &'a BlockChain, from :&str, to : &str, amoun
         println!(" ERROR NOT ENOUGH FUNDS");
         std::process::exit(0)
     };
+
     for (txid , outs) in valid_outs {
         let txid = match hex::decode(&txid) {
             Ok(txid) => txid,
@@ -101,26 +102,25 @@ pub fn new_transaction<'a >(chain : &'a BlockChain, from :&str, to : &str, amoun
         };
         for out in outs {
             let input = TxInput {
-                //FIX CLONE HERE
                 id : txid.clone(),
                 out : Rc::new(out),
                 sig : Rc::from(from),
             };
             inputs.push(input);
         }
-        
-        outputs.push(TxOutput {
-            value : Rc::new(*amount),
-            pubkey : Rc::from(to),
-        });
+    }
 
-        if acc > *amount {
-            outputs.push(TxOutput {
-                value : Rc::new(acc-*amount),
-                pubkey : Rc::from(from),
-            });
-        }
-    };
+    outputs.push(TxOutput {
+        value : Rc::new(*amount),
+        pubkey : Rc::from(to),
+    });
+
+    if acc > *amount {
+        outputs.push(TxOutput {
+            value : Rc::new(acc-*amount),
+            pubkey : Rc::from(from),
+        });
+    }
 
     let tx = Transaction {
         id : None,
@@ -129,5 +129,4 @@ pub fn new_transaction<'a >(chain : &'a BlockChain, from :&str, to : &str, amoun
     };
     let tx = tx.set_id();
     tx
-
- }
+}
