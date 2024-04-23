@@ -63,23 +63,26 @@ impl <'a>BlockChain <'a>{
             std::process::exit(0);
             
         } else {
-            let cbtx = transaction::coin_base_tx(address.to_string(), "genesisData".to_string());
-            let genesis = block::Genesis(cbtx);
-            println!("Genesis proved");
-            let serialized_genesis = bincode::serialize(&genesis).unwrap();
-            let mut binding = match DATABASE.lock() {
+            let binding = match DATABASE.lock() {
                 Ok(db) => db,
                 Err(e) => {
                     println!("Unable to acquire mutex lock in init_blockchain");
                     std::process::exit(0)
                 }
             };
-            let gen_hash = genesis.hash.unwrap().to_string();
-            binding.insert(gen_hash.to_string(), serialized_genesis);
-            binding.insert("lh".to_string(), gen_hash.as_bytes().to_vec());
-            save_database(&binding.deref(), "db.txt").unwrap();
+            let item = match binding.get("lh") {
+                Some(lh) => {
+                    println!("got lh");
+                    lh
+                },
+                _ => {
+                    println!("unalbe to retrive last hash in continue_blockchain");
+                    std::process::exit(0)
+                }
+            };
+            let item = std::str::from_utf8(item).unwrap();
             BlockChain {
-                lasthash : gen_hash,
+                lasthash : item.to_string(),
                 database : & DATABASE,
             }
         }
