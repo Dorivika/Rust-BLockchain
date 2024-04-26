@@ -39,6 +39,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "blockchain"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "bs58",
+ "getopts",
+ "hex",
+ "lazy_static",
+ "num",
+ "p256",
+ "ring",
+ "ripemd",
+ "serde",
+ "sha2",
+]
+
+[[package]]
 name = "bs58"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -233,6 +250,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c198f91728a82281a64e1f4f9eeb25d82cb32a5de251c6bd1b5154d63a8e7bd"
 
 [[package]]
+name = "main"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "blockchain",
+ "bs58",
+ "getopts",
+ "hex",
+ "lazy_static",
+ "num",
+ "p256",
+ "ring",
+ "ripemd",
+ "serde",
+ "sha2",
+]
+
+[[package]]
 name = "num"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -420,23 +455,6 @@ dependencies = [
  "pkcs8",
  "subtle",
  "zeroize",
-]
-
-[[package]]
-name = "second_blockchain"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "bs58",
- "getopts",
- "hex",
- "lazy_static",
- "num",
- "p256",
- "ring",
- "ripemd",
- "serde",
- "sha2",
 ]
 
 [[package]]

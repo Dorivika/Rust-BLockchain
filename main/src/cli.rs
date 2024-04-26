@@ -1,7 +1,7 @@
 use std::env;
-use crate::BlockChain;
-use crate::proof;
-use crate::transaction;
+use blockchain::blockchain::BlockChain;
+use blockchain::proof;
+use blockchain::transaction;
 
 pub struct CommandLine <'b> {
     pub blockchain : Option<&'b mut BlockChain<'b>>,
