@@ -76,7 +76,7 @@ pub fn coin_base_tx(to : String, mut data: String) -> Transaction {
         inputs : vec![txin],
         outputs : vec![txout],
     };
-    let mut tx = tx.set_id();
+    tx = tx.set_id();
     tx
 
 }

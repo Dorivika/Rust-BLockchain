@@ -1,6 +1,8 @@
 use blockchain::BlockChain;
 use cli::CommandLine;
 
+use crate::wallet::pub_key_hash;
+
 mod block;
 mod proof;
 mod blockchain;
@@ -11,7 +13,8 @@ fn main() {
     let mut cli = CommandLine {
         blockchain : None
     };
-    cli.run()
+    cli.run();
+
 }
 
 

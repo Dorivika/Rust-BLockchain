@@ -92,7 +92,7 @@ impl <'a>BlockChain <'a>{
         let item = binding.get("lh").unwrap();
         let item = std::str::from_utf8(item).unwrap();
 
-        let new_block = create_block(Some(Rc::new(data)), Arc::from(item));
+        let new_block = create_block(Some(data), Arc::from(item));
         println!("BLOCK CREATED");
         println!("{:?}", new_block);
         let serialized_newblock = bincode::serialize(&new_block).unwrap();
@@ -110,15 +110,15 @@ impl <'a>BlockChain <'a>{
         let mut unspent_tx : Vec<Transaction> = vec![];
         let mut spent_txos : HashMap<String, Vec<i32>>;
 
-        let mut iter = self.iterator();
+        let iter = self.iterator();
         spent_txos = HashMap::new();
         loop {
             let block = match iter.borrow_mut().next() {
                 Some(b) => b,
                 None => break,
             };
-            if let Some(transaction) = block.transactions{ 
-            for tx in transaction.as_ref() {
+            // if let Some(transaction) = block.transactions{ 
+            for tx in block.transactions.unwrap() {
                 let serialized_tx = bincode::serialize(&tx).unwrap();
                 let tx_as_slice = serialized_tx.as_slice();
                 let txid = hex::encode(tx_as_slice);
@@ -133,6 +133,7 @@ impl <'a>BlockChain <'a>{
                     }
                     if out.can_be_unlock(address){
                         unspent_tx.push(tx.clone());
+                        println!("Something was pushed")
                     }
                 }
                 if tx.is_coinbase() == false{
@@ -144,7 +145,7 @@ impl <'a>BlockChain <'a>{
                 }
             }
             }
-        }
+        // }
             if block.prev_hash.unwrap().len() == 0 {
                 break
             };

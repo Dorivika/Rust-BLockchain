@@ -33,9 +33,11 @@ impl Wallet {
     pub fn make_wallet() -> Wallet {
         Wallet::newkeypair()
     }
+    
     pub fn address(&self) -> Rc<[u8]> {
         let pubhashkey = pub_key_hash(self.public_key());
-        let mut versioned_hash : Vec<u8> = vec![VERSION];
+        let mut versioned_hash : Vec<u8> = vec![];
+        versioned_hash.push(VERSION);
         let mut fullhash : Vec<u8> = vec![];
         versioned_hash.extend_from_slice(pubhashkey.deref());
 
@@ -69,11 +71,11 @@ pub fn checksum(payload : Rc<[u8]>) -> Rc<[u8]> {
     Rc::from(second_hash)
 }
 
-fn base68encode(input : Rc<[u8]>) -> Rc<[u8]> {
+fn base58encode(input : Rc<[u8]>) -> Rc<[u8]> {
     let encoded = bs58::encode(input).into_vec();
     Rc::from(encoded)
 }
-fn base68decode(input : Rc<[u8]>) -> Rc<[u8]> {
+fn base58decode(input : Rc<[u8]>) -> Rc<[u8]> {
     let encoded = match bs58::decode(input).into_vec() {
         Ok(a) => a,
         _ => {

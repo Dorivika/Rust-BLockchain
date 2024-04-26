@@ -11,7 +11,7 @@ use sha2::Sha256;
 #[derive(Debug,Serialize, Deserialize)]
 pub struct Block{
     pub hash: Option<Arc<str>>,
-    pub transactions: Option<Rc<Vec<Transaction>>>,
+    pub transactions: Option<Vec<Transaction>>,
     pub prev_hash: Option<Arc<str>>,
     pub nonce: Option<Rc<i32>>,
 }
@@ -33,10 +33,10 @@ impl Block {
 }
 
 pub fn Genesis(coinbase : Transaction) -> Block {
-    create_block(Some(Rc::new(vec![coinbase])), Arc::from(""))
+    create_block(Some(vec![coinbase]), Arc::from(""))
 }
 
-pub fn create_block<'a>(txs: Option<Rc<Vec<Transaction>>>, prev_hash: Arc<str>) -> Block {
+pub fn create_block<'a>(txs: Option<Vec<Transaction>>, prev_hash: Arc<str>) -> Block {
     let mut block = Block {
         hash: None,
         transactions: txs,
