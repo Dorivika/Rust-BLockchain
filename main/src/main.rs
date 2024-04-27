@@ -1,7 +1,6 @@
 use cli::CommandLine;
-
 mod cli; 
-mod wallet;
+use wallet;
 use blockchain;
 
 fn main() { 

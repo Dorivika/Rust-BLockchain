@@ -48,9 +48,6 @@ dependencies = [
  "hex",
  "lazy_static",
  "num",
- "p256",
- "ring",
- "ripemd",
  "serde",
  "sha2",
 ]
@@ -253,18 +250,8 @@ checksum = "9c198f91728a82281a64e1f4f9eeb25d82cb32a5de251c6bd1b5154d63a8e7bd"
 name = "main"
 version = "0.1.0"
 dependencies = [
- "bincode",
  "blockchain",
- "bs58",
- "getopts",
- "hex",
- "lazy_static",
- "num",
- "p256",
- "ring",
- "ripemd",
- "serde",
- "sha2",
+ "wallet",
 ]
 
 [[package]]
@@ -575,6 +562,17 @@ name = "version_check"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
+
+[[package]]
+name = "wallet"
+version = "0.1.0"
+dependencies = [
+ "bs58",
+ "p256",
+ "ring",
+ "ripemd",
+ "sha2",
+]
 
 [[package]]
 name = "wasi"

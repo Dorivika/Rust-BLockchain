@@ -20,7 +20,7 @@ impl Block {
     pub fn hash_transacitons(&self) -> Vec<u8>{
         let mut tx_hashes: Vec<Vec<u8>> = Vec::new();
         let tx_hash: Vec<u8>;
-        for tx in self.transactions.as_ref().unwrap().iter() {
+        for tx in self.transactions.as_ref().unwrap() {
             tx_hashes.push(tx.id.as_deref().unwrap().to_vec());
         }
         let mut hasher = Sha256::new();

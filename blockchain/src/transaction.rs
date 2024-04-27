@@ -86,20 +86,13 @@ pub fn new_transaction<'a >(chain : &'a BlockChain, from :&str, to : &str, amoun
     let mut outputs : Vec<TxOutput> = vec![];
 
     let (acc,valid_outs) = chain.find_spos(from, amount);
-
     if acc < *amount {
         println!(" ERROR NOT ENOUGH FUNDS");
         std::process::exit(0)
     };
 
     for (txid , outs) in valid_outs {
-        let txid = match hex::decode(&txid) {
-            Ok(txid) => txid,
-            Err(e) => {
-                println!("Couldn't decode txid in transaction::new_transaction");
-                std::process::exit(0)
-            }
-        };
+        let txid = hex::decode(&txid).unwrap();
         for out in outs {
             let input = TxInput {
                 id : txid.clone(),
@@ -120,6 +113,7 @@ pub fn new_transaction<'a >(chain : &'a BlockChain, from :&str, to : &str, amoun
             value : Rc::new(acc-*amount),
             pubkey : Rc::from(from),
         });
+        println!("{}",acc-*amount)
     }
 
     let tx = Transaction {

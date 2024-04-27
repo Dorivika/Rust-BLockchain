@@ -1,4 +1,4 @@
-const DIFFICULTY:u32 = 13;
+const DIFFICULTY:u32 = 5;
 
 
 use std::{rc::Rc, sync::Arc};

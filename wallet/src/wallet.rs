@@ -47,6 +47,8 @@ impl Wallet {
 
         return Rc::from(fullhash);
     }
+
+
 }
 
 pub fn pub_key_hash (pubkey : &[u8]) -> Rc<[u8]> {

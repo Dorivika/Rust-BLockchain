@@ -124,8 +124,7 @@ impl <'a>BlockChain <'a>{
                 let txid = hex::encode(tx_as_slice);
                 'unspent_tx : for (outidx, out) in tx.outputs.iter().enumerate() {
                     if spent_txos.contains_key(&txid) {
-                        let spentouts =  spent_txos.get(&txid).unwrap();
-                        for spentout in spentouts {
+                        for spentout in spent_txos.get(&txid).unwrap(){
                             if *spentout == outidx as i32 {
                                 continue 'unspent_tx
                             }
@@ -133,7 +132,7 @@ impl <'a>BlockChain <'a>{
                     }
                     if out.can_be_unlock(address){
                         unspent_tx.push(tx.clone());
-                        println!("Something was pushed")
+                        break
                     }
                 }
                 if tx.is_coinbase() == false{
