@@ -1,7 +1,7 @@
-use std::{collections::HashMap, error::Error, fs::{File, OpenOptions}, io::{Read, Write}, ops::Deref};
+use std::{collections::HashMap, error::Error, fs::{File, OpenOptions}, io::{Read, Write}, ops::Deref, vec};
 use ring::error;
 
-use crate::wallet::Wallet;
+use crate::wallet::{self, Wallet};
 struct  Wallets {
     wallets : Option<HashMap<String, Wallet>>
 }
@@ -46,5 +46,21 @@ impl Wallets {
     fn get_wallet(&self, address: String) -> Wallet {
         let ws = self.wallets.as_ref().unwrap().get(&address).unwrap().clone();
         ws
+    }
+    
+    fn get_all_addresses<'a>(&'a self) -> Vec<&'a str> {
+        self.wallets
+        .as_ref()
+        .unwrap()
+        .keys()
+        .map(|x| x.as_str()).collect()
+    }
+
+    fn add_wallets(&mut self) -> String {
+        let wallet = wallet::Wallet::make_wallet();
+        let address = wallet.address();
+
+        self.wallets.as_mut().unwrap().insert(address.clone(), wallet);
+        return address;
     }
 }
