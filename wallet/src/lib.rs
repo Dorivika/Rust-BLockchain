@@ -1,2 +1,2 @@
-mod wallet;
-mod wallets;
+pub mod wallet;
+pub mod wallets;

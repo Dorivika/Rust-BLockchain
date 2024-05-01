@@ -2,6 +2,8 @@ use std::env;
 use blockchain::blockchain::BlockChain;
 use blockchain::proof;
 use blockchain::transaction;
+use wallet::wallet;
+use crate::wallet::wallets;
 
 pub struct CommandLine <'b> {
     pub blockchain : Option<&'b mut BlockChain<'b>>,
@@ -95,12 +97,53 @@ impl <'b>CommandLine<'b> {
                 let amount = args[4].parse::<i32>().expect("Amount should be a number");
                 self.send(from.to_string(), to.to_string(), amount);
             }
+            "createwallet" => {
+                self.create_wallet()
+            }
+            "listaddresses" => {
+                self.list_addresses()
+            }
             _ => {
                 println!("Invalid command");
             }
+      
         }
     
         std::process::exit(0);
+    }
+
+    fn list_addresses(&self){
+        let wallets = match wallets::Wallets::create_wallets() {
+            Ok(wallets) => wallets,
+            Err(e) => {
+                println!("couldn't create wallets in list_addresses CLI");
+                return;
+            }
+        };
+        let addresses = wallets.get_all_addresses();
+        for address in addresses {
+            println!("{}",address.to_string())
+        }
+    }
+
+    fn create_wallet(&self) {
+        let mut wallets = match wallets::Wallets::create_wallets() {
+            Ok(wallets) => wallets,
+            Err(e) => {
+                println!("couldn't create wallets in list_addresses CLI");
+                return;
+            }
+        };
+
+        let address = wallets.add_wallet();
+        let _ = match wallets.save_file() {
+            Ok(()) => (),
+            Err(e) => {
+                println!("Couldn't save wallet, Error : {}", e);
+                return;
+            }
+        };
+        println!("New wallet added, address is {}", address);
     }
 
 }

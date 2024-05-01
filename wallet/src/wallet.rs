@@ -55,7 +55,7 @@ impl Wallet {
         let checksum = checksum(Rc::from(versioned_hash));
         fullhash.extend_from_slice(&checksum);
 
-        String::from_utf8_lossy(&fullhash).to_string()
+        bs58::encode(&fullhash).into_string()
     }
 
 
@@ -83,17 +83,17 @@ pub fn checksum(payload : Rc<[u8]>) -> Rc<[u8]> {
     Rc::from(second_hash)
 }
 
-fn base58encode(input : Rc<[u8]>) -> Rc<[u8]> {
-    let encoded = bs58::encode(input).into_vec();
-    Rc::from(encoded)
-}
-fn base58decode(input : Rc<[u8]>) -> Rc<[u8]> {
-    let encoded = match bs58::decode(input).into_vec() {
-        Ok(a) => a,
-        _ => {
-            println!("unable to do base58 decoding");
-            std::process::exit(0);
-        }
-    };
-    Rc::from(encoded)
-}
+// fn base58encode(input : Rc<[u8]>) -> Rc<[u8]> {
+//     let encoded = bs58::encode(input).into_vec();
+//     Rc::from(encoded)
+// }
+// fn base58decode(input : Rc<[u8]>) -> Rc<[u8]> {
+//     let encoded = match bs58::decode(input).into_vec() {
+//         Ok(a) => a,
+//         _ => {
+//             println!("unable to do base58 decoding");
+//             std::process::exit(0);
+//         }
+//     };
+//     Rc::from(encoded)
+// }
