@@ -44,7 +44,7 @@ impl Wallet {
         Wallet::newkeypair()
     }
     
-    pub fn address(&self) -> String {
+    pub fn address(&self) -> Vec<u8> {
         let pubhashkey = pub_key_hash(self.public_key().as_ref());
         let mut versioned_hash : Vec<u8> = vec![];
         versioned_hash.push(VERSION);
@@ -55,7 +55,7 @@ impl Wallet {
         let checksum = checksum(Rc::from(versioned_hash));
         fullhash.extend_from_slice(&checksum);
 
-        bs58::encode(&fullhash).into_string()
+        bs58::encode(&fullhash).into_vec()
     }
 
 

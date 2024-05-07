@@ -1,5 +1,5 @@
-use std::rc::Rc;
-
+use std::{ops::Deref, rc::Rc};
+use wallet::wallet;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -35,12 +35,27 @@ impl Transaction {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TxOutput {
     pub value : Rc<i32>,
-    pub pubkey : Rc<str>, 
+    pub pubkeyhash : Option<Rc<[u8]>>, 
 }
 
 impl TxOutput {
-    pub fn can_be_unlock(&self, data: &str) -> bool {
-        *self.pubkey == *data
+    pub fn lock(&mut self, address: Vec<u8>) {
+        let mut pubkeyhash = bas58::decode(&address);
+        pubkeyhash = pubkeyhash[1..(pubkeyhash.len()-4)];
+        self.pubkeyhash = Some(Rc::new(pubkeyhash));
+    }
+
+    pub fn is_locked_with_key(pubkeyhash : &[u8]) -> bool {
+        self.pubkeyhash.deref() == pubkeyhash
+
+    }
+
+    pub fn new_tx_output(value : i32, address : Vec<u8>) -> TxOutput {
+        let mut txo = TxOutput{
+            value : Rc::new(value),
+            pubkeyhash : None,
+        };
+        txo = txo.lock(address)
     }
 }
 
@@ -49,11 +64,13 @@ pub struct TxInput {
     pub id : Vec<u8>,
     pub out : Rc<i32>,
     pub sig : Rc<str>,
+    pub pubkey : Rc<[u8]]>
 }
 
 impl TxInput {
-    pub fn can_unlock(&self, data: &str) -> bool {
-        *self.sig == *data
+    pub fn uses_input(&self, pubkeyhash: &[u8]) -> bool {
+        let lockinghash = wallet::pub_key_hash(self.pubkey.deref());
+        lockinghash == pubkeyhash
     }
 }
 pub fn coin_base_tx(to : String, mut data: String) -> Transaction {

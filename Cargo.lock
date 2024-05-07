@@ -50,6 +50,7 @@ dependencies = [
  "num",
  "serde",
  "sha2",
+ "wallet",
 ]
 
 [[package]]

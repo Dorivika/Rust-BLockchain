@@ -1,7 +1,7 @@
 const DIFFICULTY:u32 = 5;
 
 
-use std::{rc::Rc, sync::Arc};
+use std::{rc::Rc};
 
 use crate::block::Block;
 use sha2::{Digest, Sha256};
