@@ -1,5 +1,5 @@
 # A simple POW Blockchain in Rust
-This implementation is heavily inspired by https://github.com/tensor-programming implementatiton of blockchain in GO.
+This implementation is heavily inspired by https://github.com/tensor-programming implementatiton of blockchain in GOlang.
 
 
 I have added my own design choices to a lot of a things, one of them being, using a hashmap which is written to disk as my persistence layer for the blockchain.
