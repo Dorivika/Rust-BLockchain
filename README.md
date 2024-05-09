@@ -1,4 +1,4 @@
-# A simple POW Blockchain in Rust (Kinda) 
+# A simple POW Blockchain in Rust
 This implementation is heavily inspired by https://github.com/tensor-programming implementatiton of blockchain in GO.
 
 
